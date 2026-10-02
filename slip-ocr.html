@@ -1,0 +1,11 @@
+    <!-- Slip OCR: ปุ่มอัปโหลด + ช่องเลือกไฟล์ (ซ่อน) + หน้าจอ Loading -->
+    <button class="slip-btn" id="slipBtn" type="button" aria-label="อ่านยอดเงินจากรูปสลิป" title="อ่านยอดจากสลิป">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h14v18l-2.3-1.5L14.3 21 12 19.5 9.7 21l-2.4-1.5L5 21z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>
+    </button>
+    <input type="file" id="slipInput" accept="image/*" hidden>
+    <div class="ocr" id="ocr" role="status" aria-live="polite" hidden>
+      <span id="ocrText">กำลังอ่านสลิป...</span>
+      <div class="bar indet" id="ocrBar"><i></i></div>
+      <small id="ocrSub">ครั้งแรกต้องดาวน์โหลดตัวอ่านภาษาไทย อาจใช้เวลาสักครู่</small>
+      <button type="button" id="ocrCancel">ยกเลิก</button>
+    </div>

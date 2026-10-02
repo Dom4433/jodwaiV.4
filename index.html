@@ -1,0 +1,1231 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>จดไว</title>
+<meta name="description" content="จดรายรับรายจ่ายแบบปัดนิ้ว ใช้งานได้แม้ไม่มีอินเทอร์เน็ต">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#E6ECF1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121A22" media="(prefers-color-scheme: dark)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="จดไว">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#E6ECF1; --panel:#F6F8FA; --ink:#1C2733; --muted:#6A7886;
+  --key:#FFFFFF; --key-press:#D5DEE6; --key-ink:#1C2733;
+  --in:#178A57; --in-soft:#D3F0E1; --out:#D2392F; --out-soft:#FADAD6;
+  --line:#CBD5DE;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#121A22; --panel:#1A242E; --ink:#E8EEF3; --muted:#8C9AA8;
+    --key:#24303B; --key-press:#33424F; --key-ink:#E8EEF3;
+    --in:#3CC487; --in-soft:#173A2A; --out:#FF6B5E; --out-soft:#45201D;
+    --line:#2C3946; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121A22; --panel:#1A242E; --ink:#E8EEF3; --muted:#8C9AA8;
+  --key:#24303B; --key-press:#33424F; --key-ink:#E8EEF3;
+  --in:#3CC487; --in-soft:#173A2A; --out:#FF6B5E; --out-soft:#45201D;
+  --line:#2C3946; color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{
+  height:100%;margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Bai Jamjuree","Noto Sans Thai","Leelawadee UI",Tahoma,sans-serif;
+  -webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;
+  overscroll-behavior:none;
+}
+.app{
+  height:100%;max-width:480px;margin:0 auto;display:flex;flex-direction:column;
+  padding:12px 14px 14px;gap:12px;
+}
+
+/* ---------- Top: today's total ---------- */
+.top{padding:6px 6px 0}
+.top-row{display:flex;justify-content:space-between;align-items:baseline}
+.date{font-size:15px;color:var(--muted);font-weight:500}
+.top-left{display:flex;align-items:center;gap:10px;min-width:0}
+.stats-btn{
+  display:inline-flex;align-items:center;gap:6px;border:1.5px solid var(--line);background:var(--panel);
+  color:var(--ink);font:inherit;font-size:14px;font-weight:600;padding:5px 12px 5px 9px;border-radius:999px;cursor:pointer;
+}
+.stats-btn svg{width:18px;height:18px}
+.stats-btn:focus-visible{outline:2px solid var(--ink)}
+.reset{background:none;border:0;color:var(--muted);font:inherit;font-size:14px;padding:6px 8px;border-radius:8px;cursor:pointer}
+.reset:focus-visible{outline:2px solid var(--ink)}
+.total{
+  font-size:clamp(40px,12vw,56px);font-weight:700;line-height:1.1;
+  font-variant-numeric:tabular-nums;letter-spacing:-.5px;margin-top:2px;
+  transition:color .3s;
+}
+.total.pos{color:var(--in)} .total.neg{color:var(--out)}
+.total .cur{font-size:.5em;font-weight:500;margin-right:4px;color:var(--muted)}
+.split{display:flex;gap:16px;font-size:15px;margin-top:4px;font-variant-numeric:tabular-nums}
+.split .i{color:var(--in)} .split .o{color:var(--out)}
+.last{
+  margin-top:8px;display:flex;align-items:center;gap:8px;min-height:32px;font-size:14px;color:var(--muted)
+}
+.last .amt{font-weight:600;font-variant-numeric:tabular-nums}
+.last .amt.in{color:var(--in)} .last .amt.out{color:var(--out)}
+.undo{
+  margin-left:auto;border:1px solid var(--line);background:transparent;color:var(--ink);
+  font:inherit;font-size:14px;padding:5px 12px;border-radius:999px;cursor:pointer
+}
+.undo:focus-visible{outline:2px solid var(--ink)}
+
+/* ---------- Middle: swipe display ---------- */
+.stage{
+  position:relative;flex:1 1 auto;min-height:150px;border-radius:22px;
+  background:var(--panel);overflow:hidden;touch-action:none;cursor:grab;
+  display:flex;align-items:center;justify-content:center;
+  border:1.5px dashed var(--line);
+}
+.stage:active{cursor:grabbing}
+.tint{position:absolute;inset:0;opacity:0;pointer-events:none;transition:opacity .15s}
+.tint.in{background:var(--in-soft)} .tint.out{background:var(--out-soft)}
+.hint{
+  position:absolute;bottom:12px;font-size:14px;color:var(--muted);font-weight:500;
+  transition:color .15s,transform .15s;
+}
+.hint.l{left:16px} .hint.r{right:16px}
+.hint.l.on{color:var(--out);transform:translateX(-3px)}
+.hint.r.on{color:var(--in);transform:translateX(3px)}
+.num{
+  position:relative;font-size:clamp(52px,17vw,80px);font-weight:700;
+  font-variant-numeric:tabular-nums;letter-spacing:-1px;color:var(--ink);
+  white-space:nowrap;will-change:transform;transition:color .12s;
+  max-width:92%;overflow:hidden;text-overflow:ellipsis;
+}
+.num.empty{color:var(--line)}
+.num.in{color:var(--in)} .num.out{color:var(--out)}
+.num.fly{transition:transform .32s cubic-bezier(.5,0,.75,0),opacity .32s}
+.num.back{transition:transform .25s cubic-bezier(.2,.9,.3,1.2),color .12s}
+.num.pop{animation:pop .22s ease-out}
+@keyframes pop{from{transform:scale(.9);opacity:.3}to{transform:none;opacity:1}}
+.toast{
+  position:absolute;top:14px;left:50%;transform:translate(-50%,-8px);opacity:0;
+  font-size:15px;font-weight:600;padding:6px 14px;border-radius:999px;
+  transition:opacity .2s,transform .2s;pointer-events:none;
+}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.toast.in{background:var(--in);color:#fff} .toast.out{background:var(--out);color:#fff}
+
+/* ---------- Tag bar ---------- */
+.tags{display:flex;gap:8px;flex:0 0 auto;overflow-x:auto;scrollbar-width:none;margin:0 -2px;padding:0 2px}
+.tags::-webkit-scrollbar{display:none}
+.tag{
+  flex:1 0 auto;min-width:76px;padding:0 14px;height:40px;white-space:nowrap;border:1.5px solid var(--line);border-radius:999px;background:transparent;
+  color:var(--muted);font:inherit;font-size:16px;font-weight:600;cursor:pointer;touch-action:manipulation;
+  transition:background .12s,color .12s,border-color .12s;
+}
+.tag[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.tag:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.last .tg{font-size:13px;padding:1px 8px;border-radius:999px;border:1px solid var(--line);color:var(--ink)}
+
+/* ---------- Bottom: numpad ---------- */
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;flex:0 0 auto}
+.k{
+  height:clamp(56px,9.5vh,76px);border:0;border-radius:18px;background:var(--key);color:var(--key-ink);
+  font:inherit;font-size:30px;font-weight:600;cursor:pointer;touch-action:manipulation;
+  box-shadow:0 2px 0 var(--line);transition:background .08s,transform .08s;
+}
+.k:active,.k.press{background:var(--key-press);transform:translateY(2px);box-shadow:none}
+.k:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.k.fn{background:transparent;box-shadow:none;font-size:26px;color:var(--muted)}
+.k.fn:active{background:var(--key-press)}
+.k svg{width:30px;height:30px;vertical-align:middle}
+
+/* ---------- Stats sheet ---------- */
+:root{--c-food:#E59A1A;--c-travel:#3B7DD8;--c-other:#8A7FB0}
+.sheet{
+  position:fixed;inset:0;z-index:20;background:var(--bg);overflow-y:auto;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  transform:translateY(100%);transition:transform .28s ease;visibility:hidden;
+}
+.sheet.open{transform:none;visibility:visible}
+.sheet-in{max-width:480px;margin:0 auto;padding:12px 18px 28px}
+.sheet-head{display:flex;align-items:center;gap:8px;position:sticky;top:0;background:var(--bg);padding:6px 0 10px;z-index:1}
+.sheet-head h2{font-size:22px;margin:0;flex:1}
+.icon-btn{
+  width:40px;height:40px;border-radius:12px;border:1.5px solid var(--line);background:var(--panel);color:var(--ink);
+  font:inherit;font-size:20px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center
+}
+.icon-btn:disabled{opacity:.35;cursor:default}
+.icon-btn:focus-visible{outline:2px solid var(--ink)}
+.month{display:flex;align-items:center;gap:10px;margin:4px 0 14px}
+.month b{flex:1;text-align:center;font-size:18px}
+.sum3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:18px}
+.sum3 div{background:var(--panel);border-radius:14px;padding:10px 12px}
+.sum3 small{display:block;font-size:13px;color:var(--muted)}
+.sum3 strong{display:block;font-size:19px;font-variant-numeric:tabular-nums;margin-top:2px;overflow-wrap:anywhere}
+.sum3 .i strong{color:var(--in)} .sum3 .o strong{color:var(--out)}
+.block{background:var(--panel);border-radius:18px;padding:14px 14px 16px;margin-bottom:14px}
+.block h3{font-size:16px;margin:0 0 10px}
+.chart-wrap{position:relative;height:220px}
+.empty-note{height:120px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:15px;text-align:center}
+.legend{list-style:none;padding:0;margin:12px 0 0;font-variant-numeric:tabular-nums}
+.legend li{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:15px;border-top:1px solid var(--line)}
+.legend li:first-child{border-top:0}
+.legend .dot{width:12px;height:12px;border-radius:4px;flex:0 0 auto}
+.legend .nm{flex:1}
+.legend .pc{color:var(--muted);font-size:13px;min-width:44px;text-align:right}
+.legend .am{font-weight:600;min-width:84px;text-align:right}
+
+/* ---------- Gear + count link ---------- */
+.gear{
+  width:38px;height:38px;border:0;background:transparent;color:var(--muted);border-radius:12px;
+  display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto
+}
+.gear svg{width:22px;height:22px}
+.gear:active{background:var(--key-press)}
+.gear:focus-visible{outline:2px solid var(--ink)}
+.count{
+  border:0;background:none;padding:2px 0;font:inherit;font-size:14px;color:var(--ink);cursor:pointer;
+  text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px;text-decoration-thickness:2px
+}
+.count:focus-visible{outline:2px solid var(--ink);border-radius:4px}
+
+/* ---------- Modal (bottom card) ---------- */
+.modal{position:fixed;inset:0;z-index:30;display:none;align-items:flex-end;justify-content:center}
+.modal.open{display:flex}
+.modal-back{position:absolute;inset:0;background:rgba(10,16,22,.45)}
+.modal-card{
+  position:relative;width:100%;max-width:480px;max-height:82%;display:flex;flex-direction:column;
+  background:var(--bg);border-radius:24px 24px 0 0;
+  padding:14px 18px calc(18px + env(safe-area-inset-bottom,0px));
+  animation:up .24s ease-out;
+}
+@keyframes up{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
+.modal-card .sheet-head{position:static;padding:4px 0 12px}
+.modal-body{overflow-y:auto;flex:1 1 auto;margin:0 -4px;padding:0 4px}
+.rows{list-style:none;margin:0;padding:0}
+.rows li{
+  display:flex;align-items:center;gap:10px;padding:10px 4px 10px 12px;background:var(--panel);
+  border-radius:14px;margin-bottom:8px;font-variant-numeric:tabular-nums
+}
+.rows .time{font-size:13px;color:var(--muted);min-width:40px}
+.rows .tg{font-size:13px;padding:1px 9px;border-radius:999px;border:1px solid var(--line);max-width:9em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rows .sw{width:12px;height:12px;border-radius:4px;flex:0 0 auto}
+.rows .nm{flex:1;font-size:16px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rows .amt{flex:1;text-align:right;font-weight:700;font-size:17px}
+.rows .amt.in{color:var(--in)} .rows .amt.out{color:var(--out)}
+.rows .use{font-size:13px;color:var(--muted)}
+.trash{
+  height:38px;min-width:38px;border:0;border-radius:11px;background:transparent;color:var(--muted);
+  display:inline-flex;align-items:center;justify-content:center;gap:4px;cursor:pointer;font:inherit;font-size:14px;font-weight:600;
+  transition:background .12s,color .12s,min-width .12s;
+}
+.trash svg{width:20px;height:20px}
+.trash:active{background:var(--key-press)}
+.trash.armed{background:var(--out);color:#fff;min-width:64px;padding:0 10px}
+.trash:focus-visible{outline:2px solid var(--ink)}
+.trash:disabled{opacity:.3;cursor:default}
+.empty-row{padding:28px 8px;text-align:center;color:var(--muted);font-size:15px}
+.add-row{display:flex;gap:8px;margin-top:6px}
+.add-row input{
+  flex:1;min-width:0;height:46px;border:1.5px solid var(--line);border-radius:14px;background:var(--panel);
+  color:var(--ink);font:inherit;font-size:16px;padding:0 14px
+}
+.add-row input:focus{outline:none;border-color:var(--ink)}
+.btn{
+  height:46px;border:0;border-radius:14px;background:var(--ink);color:var(--bg);font:inherit;font-size:16px;font-weight:600;
+  padding:0 18px;cursor:pointer
+}
+.btn:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.btn.ghost{background:transparent;color:var(--out);border:1.5px solid var(--line);width:100%;margin-top:6px}
+.note{font-size:13px;color:var(--muted);margin:8px 2px 0;min-height:1.2em}
+.note.err{color:var(--out)}
+.day-sum{display:flex;gap:14px;font-size:14px;margin:-4px 0 12px;font-variant-numeric:tabular-nums}
+.day-sum .i{color:var(--in)} .day-sum .o{color:var(--out)}
+
+/* ---------- Slip OCR ---------- */
+.slip-btn{
+  position:absolute;top:10px;right:10px;z-index:2;
+  width:44px;height:44px;border-radius:14px;border:1.5px solid var(--line);
+  background:var(--bg);color:var(--muted);cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;
+  transition:color .12s,background .12s;
+}
+.slip-btn svg{width:22px;height:22px}
+.slip-btn:active{background:var(--key-press);color:var(--ink)}
+.slip-btn:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.ocr{
+  position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
+  background:color-mix(in srgb, var(--panel) 92%, transparent);
+  font-size:16px;font-weight:600;color:var(--ink);text-align:center;padding:16px;
+}
+.ocr[hidden]{display:none}
+.ocr .bar{width:min(220px,70%);height:6px;border-radius:99px;background:var(--line);overflow:hidden}
+.ocr .bar i{display:block;height:100%;width:0;background:var(--ink);border-radius:inherit;transition:width .2s}
+.ocr .bar.indet i{width:35%;animation:indet 1.1s ease-in-out infinite}
+@keyframes indet{from{transform:translateX(-100%)}to{transform:translateX(300%)}}
+.ocr small{font-size:13px;font-weight:500;color:var(--muted)}
+.ocr button{
+  border:1.5px solid var(--line);background:transparent;color:var(--muted);font:inherit;font-size:14px;
+  padding:6px 16px;border-radius:999px;cursor:pointer
+}
+.toast.info{background:var(--ink);color:var(--bg);white-space:nowrap}
+@media (prefers-reduced-motion: reduce){ .ocr .bar.indet i{animation:none;width:100%;opacity:.4} }
+
+/* ---------- PWA banner ---------- */
+.banner{
+  position:fixed;left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));transform:translate(-50%,140%);
+  width:min(452px,calc(100% - 28px));display:flex;align-items:center;gap:10px;
+  background:var(--ink);color:var(--bg);padding:10px 10px 10px 16px;border-radius:16px;
+  font-size:15px;transition:transform .3s ease;z-index:10;
+}
+.banner.show{transform:translate(-50%,0)}
+.banner span{flex:1}
+.banner button{font:inherit;font-size:15px;font-weight:600;border:0;border-radius:10px;padding:8px 14px;cursor:pointer}
+.banner .go{background:var(--bg);color:var(--ink)}
+.banner .x{background:transparent;color:var(--bg);opacity:.7;padding:8px 10px}
+.offline{font-size:13px;color:var(--muted);margin-left:8px}
+@media (prefers-reduced-motion: reduce){
+  .banner,.sheet{transition:none}
+  .modal-card{animation:none}
+  .num.fly,.num.back,.num.pop,.toast,.hint{transition:none;animation:none}
+}
+@media (min-height:820px){.k{height:80px}}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Top -->
+  <section class="top" aria-label="ยอดรวมวันนี้">
+    <div class="top-row">
+      <div class="top-left">
+        <button class="stats-btn" id="statsBtn" type="button" aria-haspopup="dialog">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12A9 9 0 1 1 12 3v9z"/><path d="M15 3.5A9 9 0 0 1 20.5 9H15z"/></svg>สถิติ
+        </button>
+        <span class="date"><span id="date"></span><span class="offline" id="offline" hidden>· ออฟไลน์</span></span>
+      </div>
+      <button class="gear" id="gearBtn" type="button" aria-label="จัดการหมวดหมู่" aria-haspopup="dialog">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+    <div class="total" id="total" aria-live="polite"><span class="cur">฿</span>0</div>
+    <div class="split">
+      <span class="i" id="sumIn">รับ +0</span>
+      <span class="o" id="sumOut">จ่าย −0</span>
+    </div>
+    <div class="last" id="last">พิมพ์ตัวเลข แล้วปัดเพื่อบันทึก</div>
+  </section>
+
+  <!-- Middle -->
+  <section class="stage" id="stage" aria-label="ตัวเลขที่กำลังพิมพ์ ปัดขวาเป็นรายรับ ปัดซ้ายเป็นรายจ่าย">
+    <div class="tint in" id="tintIn"></div>
+    <div class="tint out" id="tintOut"></div>
+    <div class="toast" id="toast"></div>
+    <!-- Slip OCR: ปุ่มอัปโหลด + ช่องเลือกไฟล์ (ซ่อน) + หน้าจอ Loading -->
+    <button class="slip-btn" id="slipBtn" type="button" aria-label="อ่านยอดเงินจากรูปสลิป" title="อ่านยอดจากสลิป">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h14v18l-2.3-1.5L14.3 21 12 19.5 9.7 21l-2.4-1.5L5 21z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>
+    </button>
+    <input type="file" id="slipInput" accept="image/*" hidden>
+    <div class="ocr" id="ocr" role="status" aria-live="polite" hidden>
+      <span id="ocrText">กำลังอ่านสลิป...</span>
+      <div class="bar indet" id="ocrBar"><i></i></div>
+      <small id="ocrSub">ครั้งแรกต้องดาวน์โหลดตัวอ่านภาษาไทย อาจใช้เวลาสักครู่</small>
+      <button type="button" id="ocrCancel">ยกเลิก</button>
+    </div>
+    <div class="num empty" id="num">0</div>
+    <span class="hint l" id="hintL">‹ รายจ่าย</span>
+    <span class="hint r" id="hintR">รายรับ ›</span>
+  </section>
+
+  <!-- Bottom -->
+  <div class="tags" id="tags" role="group" aria-label="หมวดหมู่">
+  </div>
+
+  <section class="pad" id="pad" aria-label="แป้นตัวเลข">
+    <button class="k" data-k="1" type="button">1</button>
+    <button class="k" data-k="2" type="button">2</button>
+    <button class="k" data-k="3" type="button">3</button>
+    <button class="k" data-k="4" type="button">4</button>
+    <button class="k" data-k="5" type="button">5</button>
+    <button class="k" data-k="6" type="button">6</button>
+    <button class="k" data-k="7" type="button">7</button>
+    <button class="k" data-k="8" type="button">8</button>
+    <button class="k" data-k="9" type="button">9</button>
+    <button class="k fn" data-k="." type="button" aria-label="จุดทศนิยม">.</button>
+    <button class="k" data-k="0" type="button">0</button>
+    <button class="k fn" data-k="del" type="button" aria-label="ลบ (กดค้างเพื่อล้าง)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 5H9l-6 7 6 7h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z"/><path d="M17 9l-5 6M12 9l5 6"/></svg>
+    </button>
+  </section>
+</div>
+
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" aria-hidden="true">
+  <div class="sheet-in">
+    <div class="sheet-head">
+      <h2 id="sheetTitle">สถิติประจำเดือน</h2>
+      <button class="icon-btn" id="sheetClose" type="button" aria-label="ปิด">✕</button>
+    </div>
+    <div class="month">
+      <button class="icon-btn" id="mPrev" type="button" aria-label="เดือนก่อน">‹</button>
+      <b id="mLabel"></b>
+      <button class="icon-btn" id="mNext" type="button" aria-label="เดือนถัดไป">›</button>
+    </div>
+    <div class="sum3">
+      <div class="i"><small>รายรับ</small><strong id="mIn">0</strong></div>
+      <div class="o"><small>รายจ่าย</small><strong id="mOut">0</strong></div>
+      <div><small>คงเหลือ</small><strong id="mNet">0</strong></div>
+    </div>
+    <div class="block">
+      <h3>รายรับเทียบรายจ่าย</h3>
+      <div class="chart-wrap" id="wrapIO"><canvas id="chartIO" aria-label="กราฟวงกลมรายรับเทียบรายจ่าย"></canvas></div>
+      <ul class="legend" id="legIO"></ul>
+    </div>
+    <div class="block">
+      <h3>รายจ่ายแยกตามหมวด</h3>
+      <div class="chart-wrap" id="wrapOut"><canvas id="chartOut" aria-label="กราฟวงกลมรายจ่ายแยกตามหมวด"></canvas></div>
+      <ul class="legend" id="legOut"></ul>
+    </div>
+    <div class="block">
+      <h3>รายรับแยกตามหมวด</h3>
+      <div class="chart-wrap" id="wrapIn"><canvas id="chartIn" aria-label="กราฟวงกลมรายรับแยกตามหมวด"></canvas></div>
+      <ul class="legend" id="legIn"></ul>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: manage tags -->
+<div class="modal" id="tagModal" role="dialog" aria-modal="true" aria-labelledby="tagTitle">
+  <div class="modal-back" data-close></div>
+  <div class="modal-card">
+    <div class="sheet-head">
+      <h2 id="tagTitle">จัดการหมวดหมู่</h2>
+      <button class="icon-btn" type="button" data-close aria-label="ปิด">✕</button>
+    </div>
+    <div class="modal-body"><ul class="rows" id="tagList"></ul></div>
+    <div class="add-row">
+      <input id="tagInput" type="text" maxlength="12" placeholder="ชื่อหมวดใหม่ เช่น ช้อปปิ้ง" autocomplete="off" enterkeyhint="done">
+      <button class="btn" id="tagAdd" type="button">เพิ่ม</button>
+    </div>
+    <p class="note" id="tagNote" aria-live="polite"></p>
+  </div>
+</div>
+
+<!-- Modal: today's entries -->
+<div class="modal" id="dayModal" role="dialog" aria-modal="true" aria-labelledby="dayTitle">
+  <div class="modal-back" data-close></div>
+  <div class="modal-card">
+    <div class="sheet-head">
+      <h2 id="dayTitle">รายการวันนี้</h2>
+      <button class="icon-btn" type="button" data-close aria-label="ปิด">✕</button>
+    </div>
+    <div class="day-sum" id="daySum"></div>
+    <div class="modal-body"><ul class="rows" id="dayList"></ul></div>
+    <button class="btn ghost" id="clearDay" type="button">ล้างรายการทั้งหมดของวันนี้</button>
+  </div>
+</div>
+
+<div class="banner" id="banner" role="status">
+  <span id="bannerText"></span>
+  <button class="go" id="bannerGo" type="button"></button>
+  <button class="x" id="bannerX" type="button" aria-label="ปิด">✕</button>
+</div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const numEl=$('num'), stage=$('stage'), tintIn=$('tintIn'), tintOut=$('tintOut');
+  const hintL=$('hintL'), hintR=$('hintR'), toast=$('toast');
+  const MAX_DIGITS = 9;
+  const TRASH='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg>';
+
+  // ---------- Date & storage ----------
+  // รายการของแต่ละวันเก็บใน key "jodwai:ปี-เดือน-วัน" (หน้าสถิติอ่านจากตรงนี้)
+  // สรุปยอดของวันที่ผ่านไปแล้วเก็บรวมใน "jodwai:archive"
+  const DAY_RE = /^jodwai:\d{4}-\d{1,2}-\d{1,2}$/;
+  const ARCHIVE_KEY = 'jodwai:archive';
+  const keyOf = d => 'jodwai:' + d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();
+  let today = new Date();
+  let dayKey = keyOf(today);
+  function renderDate(){
+    $('date').textContent = today.toLocaleDateString('th-TH',{weekday:'long',day:'numeric',month:'long'});
+  }
+  renderDate();
+
+  function loadDay(k){
+    try { const a = JSON.parse(localStorage.getItem(k) || '[]'); return Array.isArray(a) ? a : []; }
+    catch(e){ return []; }
+  }
+  let entries = loadDay(dayKey);
+  function save(){ try { localStorage.setItem(dayKey, JSON.stringify(entries)); } catch(e){} }
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+  // ---------- Formatting ----------
+  const fmt = n => n.toLocaleString('th-TH',{minimumFractionDigits:0,maximumFractionDigits:2});
+  function fmtInput(s){
+    if(!s) return '0';
+    const [a,b] = s.split('.');
+    const intPart = Number(a||'0').toLocaleString('en-US');
+    return b!==undefined ? intPart+'.'+b : intPart;
+  }
+
+  // ---------- Render ----------
+  let input = '';
+  function renderInput(){
+    numEl.textContent = fmtInput(input);
+    numEl.classList.toggle('empty', !input);
+  }
+  function renderTotals(){
+    let inc=0, out=0;
+    entries.forEach(e => e.t==='in' ? inc+=e.v : out+=e.v);
+    const net = inc-out;
+    const t=$('total');
+    t.innerHTML = '<span class="cur">฿</span>' + (net<0?'−':'') + fmt(Math.abs(net));
+    t.classList.toggle('pos', net>0); t.classList.toggle('neg', net<0);
+    $('sumIn').textContent = 'รับ +' + fmt(inc);
+    $('sumOut').textContent = 'จ่าย −' + fmt(out);
+    const last=$('last');
+    if(entries.length){
+      const e = entries[entries.length-1];
+      last.innerHTML = 'ล่าสุด <span class="amt '+e.t+'">'+(e.t==='in'?'+':'−')+fmt(e.v)+'</span>'
+        + '<span class="tg">'+esc(e.tag||'อื่นๆ')+'</span>'
+        + '<button class="count" id="openDay" type="button" aria-haspopup="dialog">'+entries.length+' รายการ</button>'
+        + '<button class="undo" id="undo" type="button">ย้อนกลับ</button>';
+      $('undo').onclick = undo;
+      $('openDay').onclick = openDay;
+    } else {
+      last.textContent = 'พิมพ์ตัวเลข แล้วปัดเพื่อบันทึก';
+    }
+  }
+
+  // ---------- Input ----------
+  function press(k){
+    if(k==='del'){ input = input.slice(0,-1); }
+    else if(k==='.'){
+      if(input.includes('.')) return;
+      input = (input||'0') + '.';
+    } else {
+      const [a,b] = input.split('.');
+      if(b!==undefined && b.length>=2) return;
+      if(b===undefined && (a||'').length>=MAX_DIGITS) return;
+      if(input==='0') input='';
+      input += k;
+    }
+    renderInput();
+    if(navigator.vibrate) try{navigator.vibrate(8)}catch(e){}
+  }
+  function clearInput(){ input=''; renderInput(); }
+
+  const pad=$('pad');
+  pad.addEventListener('click', e=>{
+    const b=e.target.closest('.k'); if(!b) return;
+    if(b.dataset.k==='del' && longFired){ longFired=false; return; }
+    press(b.dataset.k);
+  });
+  // long press backspace = clear
+  let longTimer=null, longFired=false;
+  const delKey = pad.querySelector('[data-k="del"]');
+  delKey.addEventListener('pointerdown', ()=>{ longFired=false; longTimer=setTimeout(()=>{longFired=true;clearInput();},500); });
+  ['pointerup','pointerleave','pointercancel'].forEach(ev=>delKey.addEventListener(ev,()=>clearTimeout(longTimer)));
+
+  // ---------- Tags (ผู้ใช้เพิ่ม/ลบได้ เก็บใน "jodwai:tags") ----------
+  const TAGS_KEY='jodwai:tags', MAX_TAGS=8;
+  const PALETTE=['#E59A1A','#3B7DD8','#8A7FB0','#2BA39A','#D9608E','#7A9A2E','#C2703D','#5C6BC0'];
+  const DEFAULT_TAGS=[{n:'อาหาร',c:PALETTE[0]},{n:'เดินทาง',c:PALETTE[1]},{n:'อื่นๆ',c:PALETTE[2]}];
+  let tags=DEFAULT_TAGS.slice();
+  try{
+    const raw=JSON.parse(localStorage.getItem(TAGS_KEY)||'null');
+    if(Array.isArray(raw) && raw.length && raw.every(t=>t && typeof t.n==='string')) tags=raw;
+  }catch(e){}
+  function saveTags(){ try{ localStorage.setItem(TAGS_KEY, JSON.stringify(tags)); }catch(e){} }
+  const tagColor = n => (tags.find(t=>t.n===n)||{}).c || '#9AA5B1';
+
+  let currentTag=tags[tags.length-1].n;
+  try{ const t=localStorage.getItem('jodwai:tag'); if(tags.some(x=>x.n===t)) currentTag=t; }catch(e){}
+
+  function renderTagBar(){
+    $('tags').innerHTML = tags.map(t =>
+      '<button class="tag" type="button" data-tag="'+esc(t.n)+'" aria-pressed="'+(t.n===currentTag)+'">'+esc(t.n)+'</button>'
+    ).join('');
+    const sel=$('tags').querySelector('[aria-pressed="true"]');
+    if(sel) sel.scrollIntoView({block:'nearest',inline:'nearest'});
+  }
+  function setTag(n){
+    currentTag=n;
+    $('tags').querySelectorAll('.tag').forEach(b=>b.setAttribute('aria-pressed', b.dataset.tag===n ? 'true':'false'));
+    try{ localStorage.setItem('jodwai:tag', n); }catch(e){}
+  }
+  $('tags').addEventListener('click', e=>{
+    const b=e.target.closest('.tag'); if(!b) return;
+    setTag(b.dataset.tag);
+    if(navigator.vibrate) try{navigator.vibrate(8)}catch(e){}
+  });
+  renderTagBar();
+
+  // ---------- Commit ----------
+  function showToast(type, v){
+    toast.className = 'toast '+type;
+    toast.textContent = (type==='in'?'รายรับ +':'รายจ่าย −') + fmt(v) + ' · ' + currentTag;
+    requestAnimationFrame(()=>toast.classList.add('show'));
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(()=>toast.classList.remove('show'), 1300);
+  }
+  function commit(type){
+    checkDayChange();
+    const v = parseFloat(input);
+    if(!v || v<=0) return false;
+    entries.push({t:type, v:Math.round(v*100)/100, tag:currentTag, at:Date.now()});
+    save(); renderTotals(); showToast(type, v);
+    if(navigator.vibrate) try{navigator.vibrate(20)}catch(e){}
+    return true;
+  }
+  function undo(){
+    if(!entries.length) return;
+    entries.pop(); save(); renderTotals();
+  }
+
+  // ---------- Swipe gesture ----------
+  let startX=0, startY=0, dx=0, dragging=false, pid=null;
+  const threshold = () => Math.min(110, stage.clientWidth*0.25);
+
+  function setDragVisual(x){
+    const th = threshold();
+    const p = Math.min(1, Math.abs(x)/th);
+    numEl.style.transform = 'translateX('+x+'px) rotate('+(x/40)+'deg)';
+    numEl.classList.toggle('in', x>12);
+    numEl.classList.toggle('out', x<-12);
+    tintIn.style.opacity = x>0 ? p : 0;
+    tintOut.style.opacity = x<0 ? p : 0;
+    hintR.classList.toggle('on', x>=th);
+    hintL.classList.toggle('on', x<=-th);
+  }
+  function resetVisual(animate){
+    numEl.classList.remove('fly','in','out');
+    if(animate){ numEl.classList.add('back'); setTimeout(()=>numEl.classList.remove('back'),260); }
+    numEl.style.transform=''; numEl.style.opacity='';
+    tintIn.style.opacity=0; tintOut.style.opacity=0;
+    hintL.classList.remove('on'); hintR.classList.remove('on');
+  }
+
+  function flyOut(type){
+    const dir = type==='in'?1:-1;
+    numEl.classList.remove('back'); numEl.classList.add('fly', type);
+    numEl.style.transform = 'translateX('+(dir*stage.clientWidth)+'px) rotate('+(dir*14)+'deg)';
+    numEl.style.opacity = '0';
+    setTimeout(()=>{
+      commit(type);
+      input=''; renderInput(); resetVisual(false);
+      numEl.classList.add('pop'); setTimeout(()=>numEl.classList.remove('pop'),230);
+    }, 300);
+  }
+
+  stage.addEventListener('pointerdown', e=>{
+    if(e.target.closest('.slip-btn, .ocr')) return;   // ไม่ให้ปุ่มสลิปไปเริ่มการปัด
+    if(!input || parseFloat(input)<=0){ nudge(); return; }
+    dragging=true; pid=e.pointerId; startX=e.clientX; startY=e.clientY; dx=0;
+    numEl.classList.remove('back','fly');
+    stage.setPointerCapture(pid);
+  });
+  stage.addEventListener('pointermove', e=>{
+    if(!dragging || e.pointerId!==pid) return;
+    dx = e.clientX-startX;
+    setDragVisual(dx);
+  });
+  function endDrag(e){
+    if(!dragging || (e && e.pointerId!==pid)) return;
+    dragging=false;
+    const th = threshold();
+    if(dx>=th) flyOut('in');
+    else if(dx<=-th) flyOut('out');
+    else resetVisual(true);
+  }
+  stage.addEventListener('pointerup', endDrag);
+  stage.addEventListener('pointercancel', endDrag);
+
+  function nudge(){
+    numEl.classList.add('back');
+    numEl.style.transform='translateX(10px)';
+    setTimeout(()=>{numEl.style.transform='';},120);
+    setTimeout(()=>numEl.classList.remove('back'),300);
+  }
+
+  // ---------- Keyboard (desktop) ----------
+  document.addEventListener('keydown', e=>{
+    const openModal=document.querySelector('.modal.open');
+    if(openModal){ if(e.key==='Escape') closeModal(openModal); return; }
+    if(statsOpen){ if(e.key==='Escape') closeStats(); return; }
+    if(e.key>='0' && e.key<='9') press(e.key);
+    else if(e.key==='.'||e.key===',') press('.');
+    else if(e.key==='Backspace') press('del');
+    else if(e.key==='Escape') clearInput();
+    else if(e.key==='ArrowRight' && parseFloat(input)>0) flyOut('in');
+    else if(e.key==='ArrowLeft' && parseFloat(input)>0) flyOut('out');
+    else return;
+    e.preventDefault();
+  });
+
+  renderInput(); renderTotals();
+
+  // ---------- Stats ----------
+  let statsOpen=false, viewMonth=new Date(today.getFullYear(), today.getMonth(), 1);
+  const charts={};
+  const sheet=$('sheet');
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+  // โหลด Chart.js เฉพาะตอนเปิดหน้าสถิติ (ไฟล์อยู่ในแอป ใช้ออฟไลน์ได้)
+  // ลองโหลดจากไฟล์ในแอปก่อน ถ้าไม่เจอ (เช่น อัปโหลดแค่ index.html) จะลอง CDN ต่อ
+  // ถ้าโหลดไม่ได้เลย (ออฟไลน์และไม่มีไฟล์) จะวาดกราฟวงกลมเองด้วย SVG แทน
+  const CHART_SRC=[
+    'vendor/chart.umd.min.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js',
+    'https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js'
+  ];
+  let chartLib=null;
+  function loadScript(src, ms){
+    return new Promise((res,rej)=>{
+      const sc=document.createElement('script');
+      const t=setTimeout(()=>{ sc.remove(); rej(new Error('timeout')); }, ms);
+      sc.src=src; sc.async=true;
+      sc.onload=()=>{ clearTimeout(t); window.Chart ? res(window.Chart) : rej(new Error('no Chart')); };
+      sc.onerror=()=>{ clearTimeout(t); sc.remove(); rej(new Error('load '+src)); };
+      document.head.appendChild(sc);
+    });
+  }
+  function loadChart(){
+    if(window.Chart) return Promise.resolve(window.Chart);
+    if(chartLib) return chartLib;
+    chartLib = (async ()=>{
+      for(const src of CHART_SRC){
+        try{ return await loadScript(src, 6000); }catch(e){ console.warn('Chart.js:', e.message); }
+      }
+      return null;
+    })().then(C=>{ if(!C) chartLib=null; return C; });
+    return chartLib;
+  }
+
+  // กราฟวงกลมสำรองแบบ SVG (ใช้เมื่อไม่มี Chart.js)
+  function svgPie(wrap, rows, total){
+    const cx=110, cy=110, r=100, NS='http://www.w3.org/2000/svg';
+    let a0=-Math.PI/2, paths='';
+    rows.forEach((row,i)=>{
+      const frac=row.v/total;
+      if(frac>=0.9999){
+        paths+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="'+row.c+'" data-i="'+i+'"/>';
+        return;
+      }
+      const a1=a0+frac*Math.PI*2;
+      const x0=cx+r*Math.cos(a0), y0=cy+r*Math.sin(a0), x1=cx+r*Math.cos(a1), y1=cy+r*Math.sin(a1);
+      paths+='<path d="M'+cx+' '+cy+' L'+x0.toFixed(2)+' '+y0.toFixed(2)+' A'+r+' '+r+' 0 '+(frac>0.5?1:0)+' 1 '+x1.toFixed(2)+' '+y1.toFixed(2)+' Z" fill="'+row.c+'" data-i="'+i+'"/>';
+      a0=a1;
+    });
+    wrap.innerHTML='<svg viewBox="0 0 220 220" role="img" style="height:100%;width:auto;display:block;margin:0 auto;overflow:visible">'
+      +'<g stroke="'+css('--panel')+'" stroke-width="3" stroke-linejoin="round" style="cursor:pointer">'+paths+'</g>'
+      +'<text x="110" y="116" text-anchor="middle" font-size="15" font-weight="700" fill="#fff" style="pointer-events:none;paint-order:stroke;stroke:rgba(0,0,0,.35);stroke-width:3px"></text></svg>';
+    const label=wrap.querySelector('text');
+    wrap.querySelector('g').addEventListener('click', e=>{
+      const i=e.target.getAttribute('data-i'); if(i===null) return;
+      const row=rows[i];
+      label.textContent = label.dataset.i===i ? '' : row.n+' '+Math.round(row.v/total*100)+'%';
+      label.dataset.i = label.textContent ? i : '';
+    });
+  }
+
+  function monthEntries(y,m){
+    const prefix='jodwai:'+y+'-'+(m+1)+'-';
+    const out=[];
+    try{
+      for(let i=0;i<localStorage.length;i++){
+        const k=localStorage.key(i);
+        if(k && k.startsWith(prefix) && /^\d+$/.test(k.slice(prefix.length))){
+          const arr=JSON.parse(localStorage.getItem(k)||'[]');
+          if(Array.isArray(arr)) out.push(...arr);
+        }
+      }
+    }catch(e){}
+    return out;
+  }
+
+  function legend(el, rows, total){
+    el.innerHTML = rows.map(r=>{
+      const pc = total ? Math.round(r.v/total*100) : 0;
+      return '<li><span class="dot" style="background:'+r.c+'"></span><span class="nm">'+esc(r.n)+'</span>'
+        + '<span class="pc">'+pc+'%</span><span class="am">'+fmt(r.v)+'</span></li>';
+    }).join('');
+  }
+
+  function drawPie(key, wrapId, rows, emptyText){
+    const wrap=$(wrapId);
+    if(charts[key]){ charts[key].destroy(); charts[key]=null; }
+    const total=rows.reduce((a,r)=>a+r.v,0);
+    if(!total){
+      wrap.innerHTML='<div class="empty-note">'+emptyText+'</div>';
+      return total;
+    }
+    const shown=rows.filter(r=>r.v>0);
+    if(!window.Chart){ svgPie(wrap, shown, total); return total; }
+    wrap.innerHTML='<canvas></canvas>';
+    try{
+    charts[key]=new Chart(wrap.querySelector('canvas'),{
+      type:'pie',
+      data:{ labels:shown.map(r=>r.n), datasets:[{ data:shown.map(r=>r.v), backgroundColor:shown.map(r=>r.c), borderColor:css('--panel'), borderWidth:3, hoverOffset:6 }] },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        animation: matchMedia('(prefers-reduced-motion: reduce)').matches ? false : {duration:500},
+        plugins:{
+          legend:{display:false},
+          tooltip:{ callbacks:{ label: c => ' '+c.label+': ฿'+fmt(c.parsed)+' ('+Math.round(c.parsed/total*100)+'%)' } }
+        }
+      }
+    });
+    }catch(err){
+      console.warn('Chart.js render failed, using SVG', err);
+      charts[key]=null; svgPie(wrap, shown, total);
+    }
+    return total;
+  }
+
+  async function renderStats(){
+    const y=viewMonth.getFullYear(), m=viewMonth.getMonth();
+    $('mLabel').textContent = viewMonth.toLocaleDateString('th-TH',{month:'long',year:'numeric'});
+    $('mNext').disabled = (y===today.getFullYear() && m===today.getMonth());
+    const list=monthEntries(y,m);
+    let inc=0,out=0; const byIn={}, byOut={};
+    list.forEach(e=>{
+      const t=e.tag||'อื่นๆ';
+      if(e.t==='in'){ inc+=e.v; byIn[t]=(byIn[t]||0)+e.v; } else { out+=e.v; byOut[t]=(byOut[t]||0)+e.v; }
+    });
+    // เรียงตามลำดับหมวดปัจจุบัน แล้วตามด้วยหมวดที่ถูกลบไปแล้วแต่ยังมีข้อมูล
+    const order = by => {
+      const names=tags.map(t=>t.n).filter(n=>by[n]);
+      Object.keys(by).forEach(n=>{ if(!names.includes(n)) names.push(n); });
+      return names.map(n=>({n, v:by[n], c:tagColor(n)})).sort((a,b)=>b.v-a.v);
+    };
+    const net=inc-out;
+    $('mIn').textContent='+'+fmt(inc);
+    $('mOut').textContent='−'+fmt(out);
+    const mNet=$('mNet'); mNet.textContent=(net<0?'−':'')+fmt(Math.abs(net));
+    mNet.style.color = net>0?css('--in'):net<0?css('--out'):'';
+
+    if(!window.Chart) ['wrapIO','wrapOut','wrapIn'].forEach(id=>{ $(id).innerHTML='<div class="empty-note">กำลังโหลดกราฟ…</div>'; });
+    try{ await loadChart(); }catch(e){}
+    if(!statsOpen) return;
+    const io=[{n:'รายรับ',v:inc,c:css('--in')},{n:'รายจ่าย',v:out,c:css('--out')}];
+    const ro=order(byOut);
+    const ri=order(byIn);
+    legend($('legIO'), io, drawPie('io','wrapIO',io,'ยังไม่มีรายการในเดือนนี้'));
+    legend($('legOut'), ro, drawPie('out','wrapOut',ro,'ยังไม่มีรายจ่ายในเดือนนี้'));
+    legend($('legIn'), ri, drawPie('in','wrapIn',ri,'ยังไม่มีรายรับในเดือนนี้'));
+  }
+
+  function openStats(){
+    statsOpen=true; viewMonth=new Date(today.getFullYear(), today.getMonth(), 1);
+    sheet.classList.add('open'); sheet.setAttribute('aria-hidden','false');
+    renderStats(); setTimeout(()=>$('sheetClose').focus(),50);
+  }
+  function closeStats(){
+    statsOpen=false; sheet.classList.remove('open'); sheet.setAttribute('aria-hidden','true');
+    $('statsBtn').focus();
+  }
+  $('statsBtn').onclick=openStats;
+  $('sheetClose').onclick=closeStats;
+  $('mPrev').onclick=()=>{ viewMonth=new Date(viewMonth.getFullYear(), viewMonth.getMonth()-1, 1); renderStats(); };
+  $('mNext').onclick=()=>{ viewMonth=new Date(viewMonth.getFullYear(), viewMonth.getMonth()+1, 1); renderStats(); };
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', ()=>{ if(statsOpen) renderStats(); });
+
+  // ---------- Modals ----------
+  let lastFocus=null;
+  function openModal(m){
+    lastFocus=document.activeElement;
+    m.classList.add('open');
+    const f=m.querySelector('input, [data-close].icon-btn'); if(f) setTimeout(()=>f.focus(),30);
+  }
+  function closeModal(m){
+    m.classList.remove('open');
+    if(lastFocus && lastFocus.isConnected) lastFocus.focus();
+  }
+  document.querySelectorAll('.modal').forEach(m=>{
+    m.addEventListener('click', e=>{ if(e.target.closest('[data-close]')) closeModal(m); });
+  });
+
+  // ---------- Tag manager ----------
+  const tagModal=$('tagModal'), tagNote=$('tagNote'), tagInput=$('tagInput');
+  function note(msg, err){ tagNote.textContent=msg||''; tagNote.classList.toggle('err', !!err); }
+  function usageCount(n){
+    let c=0;
+    try{
+      for(let i=0;i<localStorage.length;i++){
+        const k=localStorage.key(i);
+        if(k && DAY_RE.test(k)) c += loadDay(k).filter(e=>(e.tag||'อื่นๆ')===n).length;
+      }
+    }catch(e){}
+    return c;
+  }
+  function renderTagList(){
+    const only=tags.length<=1;
+    $('tagList').innerHTML = tags.map((t,i)=>{
+      const used=usageCount(t.n);
+      return '<li><span class="sw" style="background:'+t.c+'"></span>'
+        + '<span class="nm">'+esc(t.n)+'</span>'
+        + (used ? '<span class="use">'+used+' รายการ</span>' : '')
+        + '<button class="trash" type="button" data-i="'+i+'" aria-label="ลบหมวด '+esc(t.n)+'"'+(only?' disabled':'')+'>'+TRASH+'</button></li>';
+    }).join('');
+    $('tagAdd').disabled = tags.length>=MAX_TAGS;
+    tagInput.disabled = tags.length>=MAX_TAGS;
+    if(tags.length>=MAX_TAGS) note('มีครบ '+MAX_TAGS+' หมวดแล้ว ลบหมวดเดิมก่อนจึงจะเพิ่มใหม่ได้');
+  }
+  function addTag(){
+    const n=tagInput.value.trim().replace(/\s+/g,' ');
+    if(!n){ note('พิมพ์ชื่อหมวดก่อนกดเพิ่ม', true); tagInput.focus(); return; }
+    if(tags.some(t=>t.n.toLowerCase()===n.toLowerCase())){ note('มีหมวด "'+n+'" อยู่แล้ว', true); return; }
+    if(tags.length>=MAX_TAGS) return;
+    const usedColors=tags.map(t=>t.c);
+    const c=PALETTE.find(p=>!usedColors.includes(p)) || PALETTE[tags.length % PALETTE.length];
+    tags.push({n,c}); saveTags();
+    tagInput.value=''; note('เพิ่มหมวด "'+n+'" แล้ว');
+    setTag(n); renderTagBar(); renderTagList();
+  }
+  $('tagAdd').onclick=addTag;
+  tagInput.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); addTag(); } });
+  armTrash($('tagList'), btn=>{
+    const i=+btn.dataset.i, t=tags[i]; if(!t || tags.length<=1) return;
+    tags.splice(i,1); saveTags();
+    if(currentTag===t.n) setTag(tags[0].n);
+    note('ลบหมวด "'+t.n+'" แล้ว รายการเดิมยังอยู่ในสถิติ');
+    renderTagBar(); renderTagList();
+  });
+  $('gearBtn').onclick=()=>{ note(''); renderTagList(); openModal(tagModal); };
+
+  // ปุ่มถังขยะ: แตะครั้งแรกเปลี่ยนเป็น "ลบ" สีแดง แตะซ้ำเพื่อยืนยัน
+  function armTrash(list, onConfirm){
+    let armed=null, t=null;
+    const disarm=()=>{ if(armed){ armed.classList.remove('armed'); armed.innerHTML=TRASH; armed=null; } clearTimeout(t); };
+    list.addEventListener('click', e=>{
+      const b=e.target.closest('.trash'); if(!b || b.disabled) return;
+      if(armed===b){ disarm(); onConfirm(b); return; }
+      disarm(); armed=b; b.classList.add('armed'); b.textContent='ลบ';
+      t=setTimeout(disarm, 2500);
+    });
+  }
+
+  // ---------- Today's entries ----------
+  const dayModal=$('dayModal');
+  function renderDayList(){
+    let inc=0,out=0; entries.forEach(e=> e.t==='in'?inc+=e.v:out+=e.v);
+    $('daySum').innerHTML = '<span class="i">รับ +'+fmt(inc)+'</span><span class="o">จ่าย −'+fmt(out)+'</span>';
+    $('dayTitle').textContent = 'รายการวันนี้ ('+entries.length+')';
+    $('clearDay').hidden = !entries.length;
+    if(!entries.length){ $('dayList').innerHTML='<li class="empty-row">ยังไม่มีรายการวันนี้ พิมพ์ตัวเลขแล้วปัดเพื่อบันทึก</li>'; return; }
+    // แสดงรายการล่าสุดไว้บนสุด
+    $('dayList').innerHTML = entries.map((e,i)=>({e,i})).reverse().map(({e,i})=>{
+      const time = e.at ? new Date(e.at).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}) : '';
+      return '<li><span class="time">'+time+'</span>'
+        + '<span class="tg">'+esc(e.tag||'อื่นๆ')+'</span>'
+        + '<span class="amt '+e.t+'">'+(e.t==='in'?'+':'−')+fmt(e.v)+'</span>'
+        + '<button class="trash" type="button" data-i="'+i+'" aria-label="ลบรายการ '+fmt(e.v)+' บาท">'+TRASH+'</button></li>';
+    }).join('');
+  }
+  armTrash($('dayList'), btn=>{
+    const i=+btn.dataset.i; if(!entries[i]) return;
+    entries.splice(i,1); save(); renderTotals(); renderDayList();
+  });
+  function openDay(){ checkDayChange(); renderDayList(); openModal(dayModal); }
+  $('clearDay').onclick=()=>{
+    if(!entries.length) return;
+    if(confirm('ล้างรายการทั้งหมดของวันนี้?')){ entries=[]; save(); renderTotals(); renderDayList(); }
+  };
+
+  // ---------- Auto-reset at midnight + archive ----------
+  function summarize(list){
+    const r=x=>Math.round(x*100)/100;
+    const s={in:0,out:0,count:list.length,tags:{}};
+    list.forEach(e=>{
+      const t=e.tag||'อื่นๆ'; s.tags[t]=s.tags[t]||{in:0,out:0};
+      if(e.t==='in'){ s.in+=e.v; s.tags[t].in+=e.v; } else { s.out+=e.v; s.tags[t].out+=e.v; }
+    });
+    s.in=r(s.in); s.out=r(s.out); s.net=r(s.in-s.out);
+    Object.values(s.tags).forEach(v=>{ v.in=r(v.in); v.out=r(v.out); });
+    return s;
+  }
+  function loadArchive(){ try{ return JSON.parse(localStorage.getItem(ARCHIVE_KEY)||'{}')||{}; }catch(e){ return {}; } }
+  function archiveDays(keys){
+    if(!keys.length) return;
+    const a=loadArchive();
+    keys.forEach(k=>{
+      const list=loadDay(k);
+      if(list.length) a[k.slice(7)] = Object.assign(summarize(list), {archivedAt:Date.now()});
+    });
+    try{ localStorage.setItem(ARCHIVE_KEY, JSON.stringify(a)); }catch(e){}
+  }
+  // เก็บวันเก่าที่ยังไม่เข้า archive (เช่น ปิดแอปข้ามคืน)
+  function archivePastDays(){
+    const a=loadArchive(), keys=[];
+    try{
+      for(let i=0;i<localStorage.length;i++){
+        const k=localStorage.key(i);
+        if(k && DAY_RE.test(k) && k!==dayKey && !a[k.slice(7)]) keys.push(k);
+      }
+    }catch(e){}
+    archiveDays(keys);
+  }
+  function checkDayChange(){
+    const now=new Date(), k=keyOf(now);
+    if(k===dayKey) return false;
+    const oldKey=dayKey;
+    archiveDays([oldKey]);
+    today=now; dayKey=k; entries=loadDay(k);
+    renderDate(); renderTotals();
+    if(dayModal.classList.contains('open')) renderDayList();
+    if(statsOpen) renderStats();
+    showBanner('เริ่มวันใหม่แล้ว ยอดของเมื่อวานเก็บไว้ในสถิติ','ตกลง',()=>{});
+    scheduleMidnight();
+    return true;
+  }
+  let midnightTimer=null;
+  function scheduleMidnight(){
+    clearTimeout(midnightTimer);
+    const now=new Date();
+    const next=new Date(now.getFullYear(), now.getMonth(), now.getDate()+1, 0, 0, 1);
+    midnightTimer=setTimeout(checkDayChange, Math.min(next-now, 2147483000));
+  }
+  archivePastDays();
+  scheduleMidnight();
+  // มือถือมักหยุด timer ตอนพับแอป จึงเช็คซ้ำทุกครั้งที่กลับมาเปิด และทุก 30 วินาที
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) checkDayChange(); });
+  addEventListener('focus', checkDayChange);
+  addEventListener('pageshow', checkDayChange);
+  setInterval(checkDayChange, 30000);
+
+  // ---------- Slip OCR (Tesseract.js) ----------
+  // ต้องวางโค้ดนี้ "ภายใน" (function(){ ... })() เพราะใช้ตัวแปร input, renderInput, toast, $ ของแอป
+  const TESSERACT_SRC = 'https://cdn.jsdelivr.net/npm/tesseract.js@7/dist/tesseract.min.js';
+  const slipInput=$('slipInput'), ocrBox=$('ocr'), ocrText=$('ocrText'), ocrSub=$('ocrSub'), ocrBar=$('ocrBar');
+  let ocrWorker=null, ocrJob=0, ocrIdle=null, ocrOnProgress=null;
+
+  function loadOcrLib(){
+    if(window.Tesseract) return Promise.resolve(window.Tesseract);
+    return new Promise((res,rej)=>{
+      const sc=document.createElement('script');
+      sc.src=TESSERACT_SRC; sc.async=true;
+      sc.onload=()=> window.Tesseract ? res(window.Tesseract) : rej(new Error('no Tesseract'));
+      sc.onerror=()=>{ sc.remove(); rej(new Error('โหลด Tesseract.js ไม่สำเร็จ')); };
+      document.head.appendChild(sc);
+    });
+  }
+  async function getOcrWorker(){
+    clearTimeout(ocrIdle);
+    if(ocrWorker) return ocrWorker;
+    const T = await loadOcrLib();
+    ocrWorker = await T.createWorker(['tha','eng'], 1, {
+      logger: m => { if(ocrOnProgress) ocrOnProgress(m); }
+    });
+    return ocrWorker;
+  }
+  // ปิด worker เมื่อไม่ได้ใช้ 60 วินาที เพื่อคืนหน่วยความจำ (มือถือ)
+  function releaseOcrLater(){
+    clearTimeout(ocrIdle);
+    ocrIdle=setTimeout(()=>{ if(ocrWorker){ ocrWorker.terminate(); ocrWorker=null; } }, 60000);
+  }
+
+  // ย่อ/ขยายรูปให้พอดี แล้วแปลงเป็นขาวดำเพิ่มคอนทราสต์ ช่วยให้อ่านแม่นขึ้น
+  async function prepImage(file){
+    let src;
+    try{ src = await createImageBitmap(file); }
+    catch(e){
+      src = await new Promise((res,rej)=>{
+        const img=new Image(), url=URL.createObjectURL(file);
+        img.onload=()=>{ URL.revokeObjectURL(url); res(img); };
+        img.onerror=()=>{ URL.revokeObjectURL(url); rej(new Error('เปิดรูปไม่ได้')); };
+        img.src=url;
+      });
+    }
+    const w0=src.width, h0=src.height;
+    const scale = w0 < 1000 ? 1400/w0 : (w0 > 2000 ? 2000/w0 : 1);
+    const c=document.createElement('canvas');
+    c.width=Math.round(w0*scale); c.height=Math.round(h0*scale);
+    const g=c.getContext('2d', { willReadFrequently:true });
+    g.drawImage(src, 0, 0, c.width, c.height);
+    const d=g.getImageData(0,0,c.width,c.height), px=d.data;
+    for(let i=0;i<px.length;i+=4){
+      let y = 0.299*px[i] + 0.587*px[i+1] + 0.114*px[i+2];
+      y = Math.max(0, Math.min(255, (y-128)*1.35 + 128));
+      px[i]=px[i+1]=px[i+2]=y;
+    }
+    g.putImageData(d,0,0);
+    return c;
+  }
+
+  // ดึง "ยอดเงิน" ออกจากข้อความ OCR ของสลิป
+  // คืนค่า { amount: number|null, candidates: [{value, score, line}] }
+  function extractAmount(raw){
+    const text = String(raw||'')
+      .replace(/[๐-๙]/g, d => String('๐๑๒๓๔๕๖๗๘๙'.indexOf(d)))   // เลขไทย → อารบิก
+      .replace(/[，‚]/g, ',').replace(/[。·]/g, '.')
+      .replace(/(\d)\s*([.,])\s*(\d)/g, '$1$2$3')                  // "1, 250 . 00" → "1,250.00"
+      .replace(/\r/g, '');
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+
+    const KEY = /(จำนวน|ยอด|amount|total|โอนเงิน|ชำระ|จ่าย|รับเงิน|pay)/i;
+    const CUR_AFTER = /^\s*(บาท|บ\.|thb|baht|฿)/i;
+    const CUR = /(บาท|thb|baht|฿)/i;
+    const BAD = /(ค่าธรรมเนียม|fee|คงเหลือ|balance|available|เลขที่|รหัส|ref|อ้างอิง|บัญชี|acc|a\/c|โทร|tel|พร้อมเพย์|promptpay|x{2,}|\*{2,})/i;
+    const DATE = /(ม\.?ค|ก\.?พ|มี\.?ค|เม\.?ย|พ\.?ค|มิ\.?ย|ก\.?ค|ส\.?ค|ก\.?ย|ต\.?ค|พ\.?ย|ธ\.?ค|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4}|\d{1,2}:\d{2})/i;
+    // ตัวเลขแบบมีคอมม่าคั่นหลักพัน หรือเลขล้วน ตามด้วยทศนิยม 2 ตำแหน่ง (ถ้ามี)
+    const NUM = /(?<![\d.,:\/-])(\d{1,3}(?:,\d{3})+|\d+)(?:[.,](\d{2}))?(?![\d:\/]|[.,]\d)/g;
+
+    const found = [];
+    lines.forEach((line, i) => {
+      const prev = lines[i-1] || '';
+      let m; NUM.lastIndex = 0;
+      while((m = NUM.exec(line))){
+        const intPart = m[1].replace(/,/g, ''), dec = m[2];
+        const value = parseFloat(intPart + (dec ? '.'+dec : ''));
+        if(!(value > 0) || intPart.length > 9) continue;
+        const after = line.slice(m.index + m[0].length);
+        const hasComma = m[1].includes(',');
+        let score = 0;
+        if(dec) score += 3;
+        if(hasComma) score += 1;
+        if(CUR_AFTER.test(after)) score += 4; else if(CUR.test(line)) score += 1;
+        if(KEY.test(line) && !BAD.test(line)) score += 4;
+        else if(KEY.test(prev) && !BAD.test(prev) && line.length < 24) score += 3;
+        if(BAD.test(line)) score -= 6;
+        if(DATE.test(line)) score -= 3;
+        if(!dec && !hasComma && intPart.length >= 5) score -= 4;   // น่าจะเป็นเลขอ้างอิง
+        if(!dec && !CUR.test(line) && !KEY.test(line)) score -= 2;
+        found.push({ value, score, line });
+      }
+    });
+    found.sort((a,b) => b.score - a.score);
+    const best = found[0];
+    return { amount: best && best.score >= 3 ? best.value : null, candidates: found.slice(0,5) };
+  }
+
+  function setOcrUI(text, progress, sub){
+    ocrText.textContent=text;
+    if(sub!==undefined) ocrSub.textContent=sub;
+    if(progress==null){ ocrBar.classList.add('indet'); ocrBar.firstElementChild.style.width=''; }
+    else { ocrBar.classList.remove('indet'); ocrBar.firstElementChild.style.width=Math.round(progress*100)+'%'; }
+  }
+  function infoToast(msg, ms){
+    toast.className='toast info'; toast.textContent=msg;
+    requestAnimationFrame(()=>toast.classList.add('show'));
+    clearTimeout(showToast._t);
+    showToast._t=setTimeout(()=>toast.classList.remove('show'), ms||2200);
+  }
+  function amountToInput(v){
+    const r=Math.round(v*100)/100;
+    const [a,b]=String(r).split('.');
+    if(a.length > MAX_DIGITS) return null;
+    return b ? a+'.'+b.slice(0,2) : a;
+  }
+
+  async function readSlip(file){
+    if(!file) return;
+    if(!/^image\//.test(file.type)){ infoToast('กรุณาเลือกไฟล์รูปภาพ'); return; }
+    const job=++ocrJob;
+    ocrBox.hidden=false;
+    setOcrUI('กำลังอ่านสลิป...', null, ocrWorker ? 'กำลังเตรียมรูปภาพ' : 'ครั้งแรกต้องดาวน์โหลดตัวอ่านภาษาไทย อาจใช้เวลาสักครู่');
+    ocrOnProgress = m => {
+      if(job!==ocrJob) return;
+      if(m.status==='recognizing text') setOcrUI('กำลังอ่านสลิป... '+Math.round(m.progress*100)+'%', m.progress, 'กำลังหายอดเงิน');
+      else if(/load|initial/i.test(m.status)) setOcrUI('กำลังอ่านสลิป...', m.progress>0 && m.progress<1 ? m.progress : null, 'กำลังโหลดตัวอ่านข้อความ');
+    };
+    try{
+      const [canvas, worker] = await Promise.all([prepImage(file), getOcrWorker()]);
+      if(job!==ocrJob) return;
+      const { data } = await worker.recognize(canvas);
+      if(job!==ocrJob) return;
+      const { amount, candidates } = extractAmount(data.text);
+      console.log('[OCR]', data.text, candidates);
+      const str = amount!=null ? amountToInput(amount) : null;
+      if(str){
+        input=str; renderInput();
+        numEl.classList.add('pop'); setTimeout(()=>numEl.classList.remove('pop'),230);
+        infoToast('อ่านได้ ฿'+fmt(amount)+' · ปัดเพื่อบันทึก', 2800);
+      } else {
+        infoToast('หายอดเงินไม่เจอ ลองรูปที่ชัดขึ้น', 2800);
+      }
+    }catch(err){
+      console.warn('OCR error', err);
+      if(job===ocrJob) infoToast(navigator.onLine ? 'อ่านสลิปไม่สำเร็จ ลองใหม่อีกครั้ง' : 'ต้องต่ออินเทอร์เน็ตเพื่ออ่านสลิป', 2800);
+      if(job===ocrJob && ocrWorker){ try{ ocrWorker.terminate(); }catch(e){} ocrWorker=null; }
+    }finally{
+      if(job===ocrJob){ ocrBox.hidden=true; ocrOnProgress=null; releaseOcrLater(); }
+    }
+  }
+
+  $('slipBtn').addEventListener('click', ()=>{ slipInput.value=''; slipInput.click(); });
+  slipInput.addEventListener('change', ()=>readSlip(slipInput.files && slipInput.files[0]));
+  $('ocrCancel').addEventListener('click', ()=>{
+    ocrJob++; ocrBox.hidden=true; ocrOnProgress=null;
+    if(ocrWorker){ ocrWorker.terminate(); ocrWorker=null; }   // หยุดงานที่ค้างอยู่ทันที
+  });
+
+  // ---------- PWA: offline badge ----------
+  const off=$('offline');
+  const net=()=>{ off.hidden = navigator.onLine; };
+  addEventListener('online',net); addEventListener('offline',net); net();
+
+  // ---------- PWA: banner helper ----------
+  const banner=$('banner');
+  function showBanner(text, action, onGo){
+    $('bannerText').textContent=text; $('bannerGo').textContent=action;
+    $('bannerGo').onclick=()=>{ banner.classList.remove('show'); onGo(); };
+    $('bannerX').onclick=()=>banner.classList.remove('show');
+    banner.classList.add('show');
+  }
+
+  // ---------- PWA: install prompt (Android / Chrome / Edge) ----------
+  let deferred=null;
+  const isStandalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  addEventListener('beforeinstallprompt', e=>{
+    e.preventDefault(); deferred=e;
+    if(!isStandalone) showBanner('ติดตั้งจดไวไว้ที่หน้าจอโฮม','ติดตั้ง', async ()=>{
+      deferred.prompt(); await deferred.userChoice; deferred=null;
+    });
+  });
+  // iOS Safari ไม่มี prompt อัตโนมัติ จึงบอกวิธีครั้งเดียว
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  let iosTold=false; try{ iosTold = localStorage.getItem('jodwai:iosTip')==='1'; }catch(e){}
+  if(isIOS && !isStandalone && !iosTold){
+    setTimeout(()=>showBanner('กดปุ่มแชร์ แล้วเลือก "เพิ่มไปยังหน้าจอโฮม"','เข้าใจแล้ว', ()=>{
+      try{ localStorage.setItem('jodwai:iosTip','1'); }catch(e){}
+    }),1500);
+  }
+
+  // ---------- PWA: service worker + update ----------
+  if('serviceWorker' in navigator){
+    addEventListener('load', async ()=>{
+      try{
+        const reg = await navigator.serviceWorker.register('sw.js');
+        const offerUpdate = w => showBanner('มีเวอร์ชันใหม่','อัปเดต', ()=>w.postMessage('SKIP_WAITING'));
+        if(reg.waiting && navigator.serviceWorker.controller) offerUpdate(reg.waiting);
+        reg.addEventListener('updatefound', ()=>{
+          const w = reg.installing;
+          w.addEventListener('statechange', ()=>{
+            if(w.state==='installed' && navigator.serviceWorker.controller) offerUpdate(w);
+          });
+        });
+        // รีโหลดเฉพาะตอนอัปเดตเวอร์ชัน ไม่ใช่ตอนติดตั้งครั้งแรก
+        const hadController = !!navigator.serviceWorker.controller;
+        let reloaded=false;
+        navigator.serviceWorker.addEventListener('controllerchange', ()=>{
+          if(!hadController || reloaded) return; reloaded=true; location.reload();
+        });
+      }catch(err){ console.warn('SW register failed', err); }
+    });
+  }
+})();
+</script>
+</body>
+</html>
