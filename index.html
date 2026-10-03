@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-<title>Jodwai</title>
+<title>จดไว</title>
 <meta name="description" content="จดรายรับรายจ่ายแบบปัดนิ้ว ใช้งานได้แม้ไม่มีอินเทอร์เน็ต">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#E6ECF1" media="(prefers-color-scheme: light)">
@@ -282,6 +282,40 @@ body{
 .toast.info{background:var(--ink);color:var(--bg);white-space:nowrap}
 @media (prefers-reduced-motion: reduce){ .ocr .bar.indet i{animation:none;width:100%;opacity:.4} }
 
+/* ---------- History ---------- */
+.hist-btn{margin-left:auto}            /* ดันไปชิดปุ่มฟันเฟืองทางขวา */
+.top-row{gap:2px}
+.hist-meta{font-size:13px;color:var(--muted);margin:-6px 0 12px}
+.hday{background:var(--panel);border-radius:16px;margin-bottom:10px;overflow:hidden}
+.hday summary{
+  list-style:none;display:flex;align-items:center;gap:10px;padding:12px 12px 12px 14px;cursor:pointer;
+  -webkit-tap-highlight-color:transparent
+}
+.hday summary::-webkit-details-marker{display:none}
+.hday summary:focus-visible{outline:2px solid var(--ink);outline-offset:-2px;border-radius:16px}
+.hday .hd{flex:1;min-width:0}
+.hday .lbl{display:block;font-size:16px;font-weight:600}
+.hday .sub{display:block;font-size:13px;color:var(--muted);margin-top:1px;font-variant-numeric:tabular-nums;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hday .sub .i{color:var(--in)} .hday .sub .o{color:var(--out)}
+.hday .net{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.hday .net.pos{color:var(--in)} .hday .net.neg{color:var(--out)}
+.hday .chev{width:18px;height:18px;color:var(--muted);flex:0 0 auto;transition:transform .2s}
+.hday[open] .chev{transform:rotate(180deg)}
+.hrows{list-style:none;margin:0;padding:0 0 4px}
+.hrows li{
+  display:flex;align-items:center;gap:10px;padding:9px 14px;border-top:1px solid var(--line);
+  font-variant-numeric:tabular-nums
+}
+.hrows .time{font-size:13px;color:var(--muted);min-width:40px}
+.hrows .tg{font-size:13px;padding:1px 9px;border-radius:999px;border:1px solid var(--line);
+  max-width:9em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hrows .amt{flex:1;text-align:right;font-weight:700;font-size:16px}
+.hrows .amt.in{color:var(--in)} .hrows .amt.out{color:var(--out)}
+.hrows .only-sum{color:var(--muted);font-size:13px}
+.hmore{width:100%;margin-top:4px}
+@media (prefers-reduced-motion: reduce){ .hday .chev{transition:none} }
+
 /* ---------- PWA banner ---------- */
 .banner{
   position:fixed;left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));transform:translate(-50%,140%);
@@ -315,6 +349,10 @@ body{
         </button>
         <span class="date"><span id="date"></span><span class="offline" id="offline" hidden>· ออฟไลน์</span></span>
       </div>
+      <!-- History: ปุ่มนาฬิกา -->
+      <button class="gear hist-btn" id="histBtn" type="button" aria-label="ประวัติย้อนหลัง" aria-haspopup="dialog">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg>
+      </button>
       <button class="gear" id="gearBtn" type="button" aria-label="จัดการหมวดหมู่" aria-haspopup="dialog">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       </button>
@@ -432,6 +470,19 @@ body{
     <div class="day-sum" id="daySum"></div>
     <div class="modal-body"><ul class="rows" id="dayList"></ul></div>
     <button class="btn ghost" id="clearDay" type="button">ล้างรายการทั้งหมดของวันนี้</button>
+  </div>
+</div>
+
+<!-- Modal: history -->
+<div class="modal" id="histModal" role="dialog" aria-modal="true" aria-labelledby="histTitle">
+  <div class="modal-back" data-close></div>
+  <div class="modal-card">
+    <div class="sheet-head">
+      <h2 id="histTitle">ประวัติย้อนหลัง</h2>
+      <button class="icon-btn" type="button" data-close aria-label="ปิด">✕</button>
+    </div>
+    <p class="hist-meta" id="histMeta"></p>
+    <div class="modal-body" id="histBody"></div>
   </div>
 </div>
 
@@ -1170,6 +1221,91 @@ body{
     ocrJob++; ocrBox.hidden=true; ocrOnProgress=null;
     if(ocrWorker){ ocrWorker.terminate(); ocrWorker=null; }   // หยุดงานที่ค้างอยู่ทันที
   });
+
+  // ---------- History ----------
+  // อ่านทุก key "jodwai:ปี-เดือน-วัน" ใน localStorage แล้วจัดกลุ่มตามวัน (ใหม่ → เก่า)
+  // ถ้าวันไหนมีแค่ยอดสรุปใน archive (ไม่มีรายการละเอียด) จะแสดงยอดสรุปแทน
+  const histModal=$('histModal'), histBody=$('histBody');
+  const HIST_PAGE=30;
+  let histDays=[], histShown=0;
+  const CHEV='<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
+
+  function parseDayKey(k){
+    const m=/^jodwai:(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(k);
+    return m ? new Date(+m[1], +m[2]-1, +m[3]) : null;
+  }
+  function dayLabel(d){
+    const t=new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const diff=Math.round((t - d)/86400000);
+    if(diff===0) return 'วันนี้';
+    if(diff===1) return 'เมื่อวาน';
+    return d.toLocaleDateString('th-TH',{weekday:'short', day:'numeric', month:'short', year:'numeric'});
+  }
+  function collectHistory(){
+    const map={};
+    try{
+      for(let i=0;i<localStorage.length;i++){
+        const k=localStorage.key(i), d=k && parseDayKey(k);
+        if(!d) continue;
+        const list=loadDay(k);
+        if(list.length) map[k.slice(7)]={ d, list };
+      }
+      // วันที่มีแต่ยอดสรุปใน archive
+      const arc=JSON.parse(localStorage.getItem('jodwai:archive')||'{}')||{};
+      Object.keys(arc).forEach(id=>{
+        if(map[id]) return;
+        const d=parseDayKey('jodwai:'+id), s=arc[id];
+        if(d && s && s.count) map[id]={ d, list:null, sum:s };
+      });
+    }catch(e){}
+    return Object.values(map).map(day=>{
+      let inc=0,out=0,count=0;
+      if(day.list){ day.list.forEach(e=> e.t==='in'?inc+=e.v:out+=e.v); count=day.list.length; }
+      else { inc=day.sum.in||0; out=day.sum.out||0; count=day.sum.count||0; }
+      return Object.assign(day,{ inc, out, net:inc-out, count });
+    }).sort((a,b)=>b.d-a.d);
+  }
+  function dayHTML(day, open){
+    const net=day.net;
+    const rows = day.list
+      ? day.list.slice().reverse().map(e=>{
+          const time=e.at ? new Date(e.at).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}) : '';
+          return '<li><span class="time">'+time+'</span><span class="tg">'+esc(e.tag||'อื่นๆ')+'</span>'
+            +'<span class="amt '+e.t+'">'+(e.t==='in'?'+':'−')+fmt(e.v)+'</span></li>';
+        }).join('')
+      : '<li><span class="only-sum">มีเฉพาะยอดสรุปของวันนี้</span></li>';
+    return '<details class="hday"'+(open?' open':'')+'><summary>'
+      +'<span class="hd"><span class="lbl">'+dayLabel(day.d)+'</span>'
+      +'<span class="sub">'+day.count+' รายการ · <span class="i">+'+fmt(day.inc)+'</span> · <span class="o">−'+fmt(day.out)+'</span></span></span>'
+      +'<span class="net '+(net>0?'pos':net<0?'neg':'')+'">'+(net<0?'−':net>0?'+':'')+fmt(Math.abs(net))+'</span>'
+      +CHEV+'</summary><ul class="hrows">'+rows+'</ul></details>';
+  }
+  function renderHistoryPage(){
+    const more=histBody.querySelector('.hmore'); if(more) more.remove();
+    const next=histDays.slice(histShown, histShown+HIST_PAGE);
+    histBody.insertAdjacentHTML('beforeend', next.map((d,i)=>dayHTML(d, histShown+i<2)).join(''));
+    histShown+=next.length;
+    if(histShown<histDays.length){
+      histBody.insertAdjacentHTML('beforeend','<button class="btn ghost hmore" type="button">ดูวันก่อนหน้าอีก</button>');
+      histBody.querySelector('.hmore').style.color='var(--ink)';
+      histBody.querySelector('.hmore').onclick=renderHistoryPage;
+    }
+  }
+  function openHistory(){
+    checkDayChange();
+    histDays=collectHistory(); histShown=0; histBody.innerHTML='';
+    if(!histDays.length){
+      $('histMeta').textContent='';
+      histBody.innerHTML='<div class="empty-row">ยังไม่มีประวัติ เริ่มจดรายการแรกได้เลย</div>';
+    } else {
+      const inc=histDays.reduce((a,d)=>a+d.inc,0), out=histDays.reduce((a,d)=>a+d.out,0);
+      $('histMeta').textContent='บันทึกไว้ '+histDays.length+' วัน · รับรวม +'+fmt(inc)+' · จ่ายรวม −'+fmt(out);
+      renderHistoryPage();
+    }
+    histBody.scrollTop=0;
+    openModal(histModal);
+  }
+  $('histBtn').onclick=openHistory;
 
   // ---------- PWA: offline badge ----------
   const off=$('offline');
