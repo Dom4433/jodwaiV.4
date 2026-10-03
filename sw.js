@@ -1,6 +1,6 @@
 /* จดไว – Service Worker
    เปลี่ยนเลขเวอร์ชันทุกครั้งที่แก้ไฟล์ เพื่อให้เครื่องผู้ใช้โหลดของใหม่ */
-const VERSION = 'jodwai-v7';
+const VERSION = 'jodwai-v8';
 const APP_CACHE = VERSION + '-app';
 const FONT_CACHE = 'jodwai-fonts';
 
